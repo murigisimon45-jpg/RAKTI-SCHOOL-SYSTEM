@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rakti Student Portal</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>body{background:#f6f5ef;font-family:system-ui}</style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+<div class="w-full max-w-md bg-white rounded-[24px] shadow-lg p-6 md:p-8">
+
+<div id="authView">
+<div class="text-center mb-6">
+<div class="w-12 h-12 bg-[#0F4D2D] rounded-xl flex items-center justify-center mx-auto text-white font-bold text-xl">R</div>
+<h1 class="text-2xl font-bold text-[#0F4D2D] mt-3">RAKTI</h1>
+<p class="text-xs tracking-widest opacity-50">STUDENT PORTAL</p>
+<p class="text-[10px] mt-1 text-green-600">Connected to cloud (Supabase) • Works on any device</p>
+</div>
+
+<div class="flex bg-[#f0efe9] rounded-full p-1 mb-6">
+<button id="loginTab" onclick="switchTab('login')" class="flex-1 py-2 rounded-full bg-[#0F2E4A] text-white text-sm font-semibold">Login</button>
+<button id="signupTab" onclick="switchTab('signup')" class="flex-1 py-2 rounded-full text-sm opacity-60">Sign Up</button>
+</div>
+
+<div id="loginForm">
+<label class="text-xs font-semibold">Admission Number</label>
+<input id="loginAdm" placeholder="e.g 9846 or RA001" class="w-full border rounded-xl px-4 py-3 mt-1 uppercase">
+<label class="text-xs font-semibold mt-4 block">Password</label>
+<input id="loginPass" type="password" placeholder="••••••••" class="w-full border rounded-xl px-4 py-3 mt-1">
+<p id="loginError" class="text-xs text-red-500 mt-2 hidden bg-red-50 p-2 rounded"></p>
+<button onclick="studentLogin()" id="loginBtn" class="w-full bg-[#1a7a4a] text-white py-3 rounded-xl mt-4 font-semibold">Login</button>
+<p class="text-center text-xs mt-3 opacity-60">Use Adm No that admin gave you + password you set during signup</p>
+</div>
+
+<div id="signupForm" class="hidden">
+<label class="text-xs font-semibold">Admission Number</label>
+<input id="signupAdm" placeholder="e.g RA001 (must match admin)" class="w-full border rounded-xl px-4 py-3 mt-1 uppercase">
+<label class="text-xs font-semibold mt-3 block">Full Name (must match admin record)</label>
+<input id="signupName" placeholder="e.g John Doe" class="w-full border rounded-xl px-4 py-3 mt-1">
+<label class="text-xs font-semibold mt-3 block">Level (must match admin record)</label>
+<input id="signupLevel" placeholder="e.g Diploma Level 5" class="w-full border rounded-xl px-4 py-3 mt-1">
+<label class="text-xs font-semibold mt-3 block">Password</label>
+<input id="signupPass" type="password" placeholder="Create password" class="w-full border rounded-xl px-4 py-3 mt-1">
+<p id="signupError" class="text-xs text-red-500 mt-2 hidden bg-red-50 p-2 rounded"></p>
+<button onclick="studentSignup()" id="signupBtn" class="w-full bg-[#1a7a4a] text-white py-3 rounded-xl mt-4 font-semibold">Sign Up</button>
+<p class="text-[10px] mt-2 opacity-50">You must be admitted by admin first on computer. Adm No + Name + Level must exactly match admin record.</p>
+</div>
+
+<p class="text-center text-xs mt-6"><a href="#" class="underline">Forgot Password?</a></p>
+<p class="text-[10px] text-center mt-4 opacity-40">Connected to cloud via Supabase<br>Works on any device • No localStorage</p>
+</div>
+
+<div id="dashView" class="hidden">
+<div class="flex justify-between items-center mb-4">
+<div><h2 class="font-bold" id="dashName">Student</h2><p class="text-xs opacity-60" id="dashAdm">RA001</p></div>
+<button onclick="logout()" class="text-xs border px-3 py-1 rounded-full">Logout</button>
+</div>
+<div class="bg-[#f0efe9] rounded-xl p-4 mb-4">
+<p class="text-xs opacity-60">Fees Balance</p>
+<p class="text-2xl font-bold text-[#0F4D2D]" id="dashBalance">KES 0</p>
+<p class="text-[10px] opacity-50" id="dashFees">Total: 0 • Paid: 0</p>
+</div>
+<div class="mb-4">
+<h3 class="text-sm font-bold mb-2">Submit Payment</h3>
+<input id="payAmount" type="number" placeholder="Amount" class="w-full border rounded-xl px-3 py-2 mb-2">
+<select id="payType" class="w-full border rounded-xl px-3 py-2 mb-2"><option value="fees">Fees</option><option value="exam_booking">Exam Booking</option></select>
+<select id="payMethod" class="w-full border rounded-xl px-3 py-2 mb-2"><option>MPESA</option><option>Bank</option><option>Cash</option></select>
+<button onclick="submitPayment()" class="w-full bg-[#0F2E4A] text-white py-2 rounded-xl">Submit Payment (goes to admin)</button>
+<p id="payMsg" class="text-xs mt-2"></p>
+</div>
+<div class="mb-4">
+<h3 class="text-sm font-bold">My Payments</h3>
+<div id="paymentsList" class="space-y-2 max-h-40 overflow-auto text-xs"></div>
+</div>
+<div>
+<h3 class="text-sm font-bold">Notifications</h3>
+<div id="notifsList" class="space-y-2 max-h-40 overflow-auto text-xs"></div>
+</div>
+</div>
+
+</div>
+
+<script>
+const API = window.location.origin + '/api';
+let TOKEN = localStorage.getItem('rakti_student_token');
+
+function switchTab(t){
+  document.getElementById('loginForm').classList.toggle('hidden', t!=='login');
+  document.getElementById('signupForm').classList.toggle('hidden', t!=='signup');
+  document.getElementById('loginTab').className = t==='login' ? 'flex-1 py-2 rounded-full bg-[#0F2E4A] text-white text-sm font-semibold' : 'flex-1 py-2 rounded-full text-sm opacity-60';
+  document.getElementById('signupTab').className = t==='signup' ? 'flex-1 py-2 rounded-full bg-[#0F2E4A] text-white text-sm font-semibold' : 'flex-1 py-2 rounded-full text-sm opacity-60';
+}
+
+if(TOKEN){ showDash(); }
+
+async function studentSignup(){
+  const adm_number = document.getElementById('signupAdm').value.trim();
+  const full_name = document.getElementById('signupName').value.trim();
+  const level = document.getElementById('signupLevel').value.trim();
+  const password = document.getElementById('signupPass').value;
+  const errEl = document.getElementById('signupError');
+  const btn = document.getElementById('signupBtn');
+  if(!adm_number||!full_name||!level||!password){ errEl.textContent='All fields required'; errEl.classList.remove('hidden'); return; }
+  btn.textContent='Validating...'; btn.disabled=true;
+  try{
+    const res = await fetch(`${API}/auth/student-signup`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({adm_number, full_name, level, password})});
+    const data = await res.json();
+    if(data.error){ errEl.textContent=data.error; errEl.classList.remove('hidden'); btn.textContent='Sign Up'; btn.disabled=false; return; }
+    TOKEN=data.token; localStorage.setItem('rakti_student_token', TOKEN); showDash();
+  }catch(e){ errEl.textContent='Failed: '+e.message; errEl.classList.remove('hidden'); btn.textContent='Sign Up'; btn.disabled=false; }
+}
+
+async function studentLogin(){
+  const adm_number = document.getElementById('loginAdm').value.trim();
+  const password = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginError');
+  const btn = document.getElementById('loginBtn');
+  if(!adm_number||!password){ errEl.textContent='Adm No and password required'; errEl.classList.remove('hidden'); return; }
+  btn.textContent='Validating...'; btn.disabled=true;
+  try{
+    const res = await fetch(`${API}/auth/student-login`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({adm_number, password})});
+    const data = await res.json();
+    if(data.error){ errEl.textContent='Access Denied: '+data.error; errEl.classList.remove('hidden'); btn.textContent='Login'; btn.disabled=false; return; }
+    TOKEN=data.token; localStorage.setItem('rakti_student_token', TOKEN); showDash();
+  }catch(e){ errEl.textContent='Failed: '+e.message; errEl.classList.remove('hidden'); btn.textContent='Login'; btn.disabled=false; }
+}
+
+async function showDash(){
+  document.getElementById('authView').classList.add('hidden');
+  document.getElementById('dashView').classList.remove('hidden');
+  loadMe();
+}
+
+async function loadMe(){
+  const res = await fetch(`${API}/student/me`, {headers:{'Authorization':'Bearer '+TOKEN}});
+  const data = await res.json();
+  if(data.error){ logout(); return; }
+  const s = data.student;
+  document.getElementById('dashName').textContent=s.full_name;
+  document.getElementById('dashAdm').textContent=s.adm_number + ' • ' + s.level;
+  document.getElementById('dashBalance').textContent='KES ' + s.balance;
+  document.getElementById('dashFees').textContent=`Total: KES ${s.total_fees} • Paid: KES ${s.paid_amount}`;
+  document.getElementById('paymentsList').innerHTML = data.payments.map(p=>`<div class="border rounded p-2 flex justify-between"><span>KES ${p.amount} • ${p.type} • ${p.method}</span><span class="${p.status==='confirmed'?'text-green-600':'text-yellow-600'}">${p.status}</span></div>`).join('') || '<p class="opacity-50">No payments yet</p>';
+  document.getElementById('notifsList').innerHTML = data.notifications.map(n=>`<div class="border rounded p-2"><b class="text-[11px]">${n.title}</b><p>${n.message}</p><span class="text-[9px] opacity-50">${new Date(n.created_at).toLocaleString()}</span></div>`).join('') || '<p class="opacity-50">No notifications</p>';
+}
+
+async function submitPayment(){
+  const amount = document.getElementById('payAmount').value;
+  const type = document.getElementById('payType').value;
+  const method = document.getElementById('payMethod').value;
+  if(!amount) return;
+  const res = await fetch(`${API}/student/submit-payment`, {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN}, body:JSON.stringify({amount, type, method})});
+  const data = await res.json();
+  document.getElementById('payMsg').textContent = data.error || 'Payment submitted! Waiting for admin to confirm (check notifications).';
+  if(!data.error) loadMe();
+}
+
+function logout(){ localStorage.removeItem('rakti_student_token'); location.reload(); }
+</script>
+</body>
+</html>
