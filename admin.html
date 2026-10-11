@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rakti Admin - Cloud - Same Design</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700&display=swap" rel="stylesheet">
+<style>
+*{font-family:'Inter',system-ui} .jakarta{font-family:'Plus Jakarta Sans',sans-serif}
+body{background:#f6f7f9} .card{background:white;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,.06);border:1px solid #eef2f7}
+.btn-primary{background:#0F2E4A;color:white} .btn-primary:hover{background:#163a5a}
+.text-primary{color:#0F2E4A} .bg-primary{background:#0F2E4A}
+.badge-new{background:#fef08a;color:#854d0e;border:1px solid #fde047}
+</style>
+</head>
+<body class="p-4 md:p-8">
+<div id="app" class="max-w-7xl mx-auto">
+
+<!-- LOGIN - Same landing page as original -->
+<div id="loginView" class="max-w-md mx-auto mt-12 md:mt-20 card p-8">
+  <div class="flex items-center gap-3 mb-2">
+    <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-xl">R</div>
+    <div>
+      <h1 class="text-2xl font-bold text-primary jakarta">Rakti Admin</h1>
+      <p class="text-[11px] opacity-60 -mt-1">Max 2 admins • Cloud • Data API 9/9 exposed</p>
+    </div>
+  </div>
+  <p class="text-xs mt-3 opacity-70 bg-blue-50 border border-blue-100 p-3 rounded-lg">☁️ Cloud version - same design, same theme color #0F2E4A, fetches from Supabase. Works on any device (phone + computer).</p>
+  <div class="mt-6 space-y-3">
+    <input id="adminEmail" placeholder="Admin Email" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#0F2E4A]/20 focus:border-[#0F2E4A]">
+    <input id="adminPass" type="password" placeholder="Password" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#0F2E4A]/20 focus:border-[#0F2E4A]">
+    <div class="flex gap-2">
+      <button onclick="adminLogin()" class="flex-1 btn-primary py-3 rounded-xl font-semibold hover:opacity-90 transition">Login</button>
+      <button onclick="adminSignup()" class="flex-1 border border-gray-200 py-3 rounded-xl font-semibold bg-white hover:bg-gray-50">Signup (max 2)</button>
+    </div>
+    <p id="loginMsg" class="text-sm text-red-500 min-h-[20px]"></p>
+    <div class="text-[11px] opacity-50 text-center pt-2">Original UI preserved • Theme #0F2E4A • Same landing page • Cloud fetch from Supabase</div>
+  </div>
+</div>
+
+<!-- DASHBOARD - Same features as original -->
+<div id="dashView" class="hidden">
+  <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white font-bold">R</div>
+      <div>
+        <h1 class="text-2xl font-bold jakarta text-primary">Admin Dashboard</h1>
+        <p class="text-xs opacity-60">Admit: Adm No + Name + Level • Fees read-only for students • Cloud • Same design</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="relative">
+        <button onclick="document.getElementById('notifPanel').classList.toggle('hidden')" class="border border-gray-200 px-4 py-2.5 rounded-xl bg-white flex items-center gap-2 font-medium shadow-sm hover:bg-gray-50">🔔 Notifications <span id="notifBadge" class="bg-red-500 text-white text-[11px] px-2 py-0.5 rounded-full font-bold">0</span></button>
+        <div id="notifPanel" class="hidden absolute right-0 top-12 w-[440px] card p-4 z-50 max-h-[80vh] overflow-auto">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="font-bold jakarta">New Student Payments</h3>
+            <button onclick="loadPending()" class="text-xs border px-3 py-1.5 rounded-lg bg-white hover:bg-gray-50">Refresh</button>
+          </div>
+          <p class="text-[11px] opacity-50 mb-3">When student submits payment in student app (any device), it appears here with Confirm / Not Yet Received. Confirm reduces balance - cloud.</p>
+          <div id="notifList" class="space-y-3"></div>
+        </div>
+      </div>
+      <button onclick="logout()" class="border border-gray-200 px-4 py-2.5 rounded-xl bg-white hover:bg-gray-50">Logout</button>
+    </div>
+  </div>
+
+  <div class="grid md:grid-cols-3 gap-6">
+    <div class="card p-6">
+      <h3 class="font-bold mb-4 jakarta flex items-center gap-2"><span class="w-8 h-8 rounded-lg bg-blue-50 text-primary flex items-center justify-center text-sm">+</span> Admit Student</h3>
+      <p class="text-[11px] opacity-60 mb-4 bg-yellow-50 border border-yellow-100 p-2.5 rounded-lg">☁️ Saves to Supabase cloud - works on any device (phone + computer). Not localStorage.</p>
+      <div class="space-y-3">
+        <input id="admNo" placeholder="Adm No e.g RA001" class="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 uppercase focus:outline-none focus:ring-2 focus:ring-primary/20">
+        <input id="fullName" placeholder="Full Name e.g John Doe" class="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/20">
+        <input id="level" placeholder="Level e.g Diploma Level 5" class="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/20">
+        <input id="fees" type="number" placeholder="Total Fees e.g 80000" class="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/20">
+        <button onclick="admitStudent()" class="w-full btn-primary py-3 rounded-xl font-semibold">Admit Student to Cloud</button>
+        <p id="admitMsg" class="text-xs min-h-[16px]"></p>
+      </div>
+    </div>
+    <div class="md:col-span-2 card p-6">
+      <h3 class="font-bold mb-3 flex justify-between jakarta">Admitted Students (from Cloud) <button onclick="loadStudents()" class="text-xs border px-3 py-1.5 rounded-lg bg-white">Refresh</button></h3>
+      <p class="text-[11px] opacity-50 mb-3">Fetched from Supabase - visible on any device. Same design as original.</p>
+      <div id="studentsList" class="space-y-2 max-h-[520px] overflow-auto"></div>
+    </div>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-6 mt-6">
+    <div class="card p-6 border-2 border-yellow-100">
+      <h3 class="font-bold mb-2 jakarta">🔔 Notification Section - New Payments (Pulled from Student App - Cloud)</h3>
+      <p class="text-xs opacity-60 mb-3">When student submits payment on phone, it shows here instantly with Confirm / Not Yet Received. Confirm reduces balance and notifies student - cloud, not localStorage.</p>
+      <div id="pendingList" class="space-y-3"></div>
+    </div>
+    <div class="card p-6">
+      <h3 class="font-bold mb-3 jakarta">Add Direct Payment (Admin - Cloud)</h3>
+      <p class="text-[11px] opacity-60 mb-3">Add payment directly and notify student - cloud.</p>
+      <input id="payAdm" placeholder="Adm No e.g RA001" class="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 mb-2.5 uppercase">
+      <input id="payAmount" type="number" placeholder="Amount e.g 5000" class="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 mb-2.5">
+      <select id="payType" class="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 mb-3 bg-white"><option value="fees">Fees</option><option value="exam_booking">Exam Booking</option></select>
+      <button onclick="addDirectPayment()" class="w-full bg-green-700 text-white py-3 rounded-xl font-semibold hover:bg-green-800">Add & Notify Student (Cloud)</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const API = window.location.origin + '/api';
+let TOKEN = localStorage.getItem('rakti_admin_token');
+if(TOKEN) showDash();
+async function adminSignup(){
+  const email=document.getElementById('adminEmail').value.trim();
+  const password=document.getElementById('adminPass').value;
+  const res=await fetch(`${API}/auth/admin-signup`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email,password,full_name:email})});
+  const data=await res.json();
+  document.getElementById('loginMsg').textContent=data.error||data.message||'Created - login now';
+  if(data.token){ TOKEN=data.token; localStorage.setItem('rakti_admin_token', TOKEN); showDash(); }
+}
+async function adminLogin(){
+  const email=document.getElementById('adminEmail').value.trim();
+  const password=document.getElementById('adminPass').value;
+  const res=await fetch(`${API}/auth/admin-login`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email,password})});
+  const data=await res.json();
+  if(data.error){ document.getElementById('loginMsg').textContent=data.error; return; }
+  TOKEN=data.token; localStorage.setItem('rakti_admin_token', TOKEN); showDash();
+}
+function showDash(){
+  document.getElementById('loginView').classList.add('hidden');
+  document.getElementById('dashView').classList.remove('hidden');
+  loadStudents(); loadPending();
+  setInterval(loadPending, 4000);
+}
+function logout(){ localStorage.removeItem('rakti_admin_token'); location.reload(); }
+async function admitStudent(){
+  const adm_number=document.getElementById('admNo').value.trim();
+  const full_name=document.getElementById('fullName').value.trim();
+  const level=document.getElementById('level').value.trim();
+  const total_fees=document.getElementById('fees').value;
+  if(!adm_number||!full_name||!level) return document.getElementById('admitMsg').textContent='All fields required';
+  const res=await fetch(`${API}/admin/admit`, {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN}, body:JSON.stringify({adm_number,full_name,level,total_fees})});
+  const data=await res.json();
+  document.getElementById('admitMsg').textContent=data.error||`✅ Admitted ${data.adm_number} to cloud - works on any device`;
+  document.getElementById('admitMsg').className = data.error ? 'text-xs text-red-600' : 'text-xs text-green-600';
+  if(!data.error){ document.getElementById('admNo').value=''; document.getElementById('fullName').value=''; document.getElementById('level').value=''; loadStudents(); }
+}
+async function loadStudents(){
+  const res=await fetch(`${API}/admin/students`, {headers:{'Authorization':'Bearer '+TOKEN}});
+  const data=await res.json();
+  if(!Array.isArray(data)){ document.getElementById('studentsList').innerHTML='<p class="text-xs text-red-500">'+(data.error||'Failed')+'</p>'; return; }
+  document.getElementById('studentsList').innerHTML=data.map(s=>`
+    <div class="border border-gray-100 rounded-xl p-3.5 flex justify-between hover:bg-gray-50 transition">
+      <div><b class="text-primary">${s.adm_number}</b> - ${s.full_name}<br><span class="text-xs opacity-60">${s.level} • Total: KES ${s.total_fees} • Paid: KES ${s.paid_amount} • <b class="text-blue-700">Balance: KES ${s.balance}</b></span></div>
+      <span class="text-xs ${s.is_registered?'bg-green-50 text-green-700 border border-green-100':'bg-yellow-50 text-yellow-700 border border-yellow-100'} px-2.5 py-1 rounded-full h-fit font-medium">${s.is_registered?'Active':'Pending signup'}</span>
+    </div>
+  `).join('') || '<p class="text-xs opacity-50">No students admitted yet - admit first</p>';
+}
+async function loadPending(){
+  const res=await fetch(`${API}/admin/pending-payments`, {headers:{'Authorization':'Bearer '+TOKEN}});
+  const data=await res.json();
+  const badge=document.getElementById('notifBadge');
+  if(!Array.isArray(data)){ badge.textContent='0'; document.getElementById('pendingList').innerHTML='<p class="text-xs opacity-50">No pending - check login</p>'; document.getElementById('notifList').innerHTML='<p class="text-xs opacity-50">No new payments</p>'; return; }
+  badge.textContent=data.length;
+  const html=data.map(p=>`
+    <div class="border-2 border-yellow-200 bg-yellow-50/70 rounded-xl p-3.5">
+      <div class="flex justify-between"><span class="text-[10px] badge-new px-2.5 py-1 rounded-full font-bold">NEW PAYMENT • CLOUD</span><span class="text-[10px] opacity-60">${new Date(p.submitted_at).toLocaleString()}</span></div>
+      <p class="mt-2.5 font-bold text-primary">${p.students?.adm_number || p.adm_number} - ${p.students?.full_name || 'Student'}</p>
+      <p class="text-sm opacity-80">Level: ${p.students?.level || ''}</p>
+      <p class="text-sm">Amount: <b>KES ${p.amount}</b> • Type: ${p.type} • Method: ${p.method||'N/A'}</p>
+      <p class="text-[11px] opacity-60 mt-1.5">From student app (any device) - cloud. Confirm to reduce balance.</p>
+      <div class="flex gap-2 mt-3">
+        <button onclick="confirmPay('${p.id}','confirmed')" class="flex-1 bg-green-600 text-white py-2.5 rounded-xl font-bold hover:bg-green-700">✓ Confirm Payment</button>
+        <button onclick="confirmPay('${p.id}','rejected')" class="flex-1 border border-red-200 text-red-600 py-2.5 rounded-xl bg-white hover:bg-red-50">✕ Not Yet Received</button>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('pendingList').innerHTML=html||'<p class="text-xs opacity-50">No pending payments - all clear! Payments from student phone will appear here.</p>';
+  document.getElementById('notifList').innerHTML=html||'<p class="text-xs opacity-50">No new payments</p>';
+}
+async function confirmPay(id, action){
+  if(!confirm(action==='confirmed'?'Confirm this payment? Student balance will reduce (cloud).':'Mark as Not Yet Received?')) return;
+  const res=await fetch(`${API}/admin/confirm-payment`, {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN}, body:JSON.stringify({payment_id:id, action})});
+  const data=await res.json();
+  if(data.error){ alert(data.error); return; }
+  if(action==='confirmed'){ alert(`✅ Confirmed! New balance: KES ${data.balance}. Student notified (cloud).`); } else { alert('Marked as Not Yet Received. Student notified.'); }
+  loadPending(); loadStudents();
+}
+async function addDirectPayment(){
+  const adm_number=document.getElementById('payAdm').value.trim();
+  const amount=document.getElementById('payAmount').value;
+  const type=document.getElementById('payType').value;
+  if(!adm_number||!amount) return alert('Adm No and Amount required');
+  const res=await fetch(`${API}/admin/add-payment`, {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN}, body:JSON.stringify({adm_number,amount,type})});
+  const data=await res.json();
+  if(data.error) alert(data.error); else { alert(`✅ Added! New balance: KES ${data.balance}`); loadStudents(); document.getElementById('payAdm').value=''; document.getElementById('payAmount').value=''; }
+}
+</script>
+</body>
+</html>

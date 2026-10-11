@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rakti Student Portal - Cloud - Same Design</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700&display=swap" rel="stylesheet">
+<style>
+*{font-family:'Inter',system-ui} .jakarta{font-family:'Plus Jakarta Sans',sans-serif}
+body{background:#f6f7f9} .card{background:white;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,.06);border:1px solid #eef2f7}
+.btn-primary{background:#0F2E4A;color:white} .text-primary{color:#0F2E4A} .bg-primary{background:#0F2E4A}
+.tab-active{background:#0F2E4A;color:white} .tab-inactive{background:white;border:1px solid #e5e7eb;color:#6b7280}
+</style>
+</head>
+<body class="p-4 md:p-6">
+<div class="max-w-2xl mx-auto">
+
+<!-- HEADER - Same as original RAKTI portal -->
+<div class="card p-6 md:p-8 mb-6 text-center">
+  <div class="w-16 h-16 mx-auto rounded-2xl bg-primary flex items-center justify-center text-white font-bold text-2xl jakarta mb-3">R</div>
+  <h1 class="text-3xl font-bold jakarta text-primary">RAKTI</h1>
+  <p class="text-sm opacity-60 -mt-1">Student Portal</p>
+  <p class="text-[11px] mt-3 bg-blue-50 border border-blue-100 p-2.5 rounded-xl opacity-80">☁️ Cloud version - same design, same theme #0F2E4A, same landing page. Fetches from Supabase - works on any device (phone + computer). Original UI was localStorage (same browser only) - this is cloud (any device).</p>
+</div>
+
+<!-- AUTH - Same landing page tabs as original -->
+<div id="authView" class="card p-6 md:p-8">
+  <div class="flex gap-2 mb-6 p-1 bg-gray-100 rounded-xl w-fit">
+    <button id="loginTab" onclick="showTab('login')" class="tab-active px-6 py-2 rounded-lg font-semibold text-sm transition">Login</button>
+    <button id="signupTab" onclick="showTab('signup')" class="tab-inactive px-6 py-2 rounded-lg font-semibold text-sm transition">Sign Up</button>
+  </div>
+
+  <div id="loginForm" class="space-y-4">
+    <h2 class="font-bold text-lg jakarta">Welcome back</h2>
+    <p class="text-xs opacity-60 -mt-3">Login with Adm No + Password - cloud check (works any device)</p>
+    <input id="loginAdm" placeholder="Adm No e.g RA001 or 9846" class="w-full border border-gray-200 rounded-xl px-4 py-3 uppercase focus:outline-none focus:ring-2 focus:ring-primary/20">
+    <input id="loginPass" type="password" placeholder="Password" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/20">
+    <button onclick="studentLogin()" class="w-full btn-primary py-3 rounded-xl font-semibold">Login to Cloud</button>
+    <p id="loginMsg" class="text-xs min-h-[16px]"></p>
+  </div>
+
+  <div id="signupForm" class="hidden space-y-4">
+    <h2 class="font-bold text-lg jakarta">Create account</h2>
+    <p class="text-xs opacity-60 -mt-3">Must be admitted by admin first on computer. Name + Level must match exactly - cloud verification (works any device).</p>
+    <input id="signupAdm" placeholder="Adm No e.g RA001" class="w-full border border-gray-200 rounded-xl px-4 py-3 uppercase focus:outline-none focus:ring-2 focus:ring-primary/20">
+    <input id="signupName" placeholder="Full Name (must match admitted)" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/20">
+    <input id="signupLevel" placeholder="Level e.g Diploma Level 5 (must match)" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/20">
+    <input id="signupPass" type="password" placeholder="Create Password" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/20">
+    <button onclick="studentSignup()" class="w-full btn-primary py-3 rounded-xl font-semibold">Create Account (Cloud)</button>
+    <p id="signupMsg" class="text-xs min-h-[16px]"></p>
+  </div>
+
+  <div class="text-[11px] opacity-50 text-center pt-4 mt-4 border-t">Same landing page like original • Same theme color #0F2E4A • Same features • Cloud fetch from Supabase</div>
+</div>
+
+<!-- DASHBOARD - Same features as original but cloud -->
+<div id="dashView" class="hidden space-y-6">
+  <div class="card p-6 flex justify-between items-center">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white font-bold">R</div>
+      <div>
+        <h2 class="font-bold jakarta text-primary" id="studentName">Student</h2>
+        <p class="text-xs opacity-60" id="studentAdm">Adm No • Level • Cloud • Same design</p>
+      </div>
+    </div>
+    <button onclick="logout()" class="border border-gray-200 px-4 py-2 rounded-xl bg-white text-sm">Logout</button>
+  </div>
+
+  <div class="grid grid-cols-3 gap-4">
+    <div class="card p-4 text-center"><p class="text-[11px] opacity-60">Total Fees</p><p class="font-bold text-lg text-primary" id="totalFees">KES 0</p></div>
+    <div class="card p-4 text-center"><p class="text-[11px] opacity-60">Paid</p><p class="font-bold text-lg text-green-700" id="paidAmount">KES 0</p></div>
+    <div class="card p-4 text-center border-2 border-blue-100"><p class="text-[11px] opacity-60">Balance</p><p class="font-bold text-lg text-blue-700" id="balance">KES 0</p></div>
+  </div>
+
+  <div class="card p-6">
+    <h3 class="font-bold jakarta mb-3">Submit Payment (Cloud - goes to admin notification)</h3>
+    <p class="text-[11px] opacity-60 mb-4">When you submit, admin sees it on computer instantly with Confirm / Not Yet Received - cloud, not localStorage. Works any device.</p>
+    <div class="grid md:grid-cols-2 gap-3">
+      <input id="payAmount" type="number" placeholder="Amount e.g 5000" class="border border-gray-200 rounded-xl px-4 py-3">
+      <select id="payType" class="border border-gray-200 rounded-xl px-4 py-3 bg-white"><option value="fees">Fees</option><option value="exam_booking">Exam Booking</option></select>
+      <select id="payMethod" class="border border-gray-200 rounded-xl px-4 py-3 bg-white"><option value="M-Pesa">M-Pesa</option><option value="Bank">Bank</option><option value="Cash">Cash</option></select>
+      <button onclick="submitPayment()" class="bg-green-700 text-white rounded-xl py-3 font-semibold hover:bg-green-800">Submit to Admin (Cloud)</button>
+    </div>
+    <p id="payMsg" class="text-xs mt-3 min-h-[16px]"></p>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-6">
+    <div class="card p-6">
+      <h3 class="font-bold jakarta mb-3 flex justify-between">My Payments <button onclick="loadMe()" class="text-xs border px-3 py-1 rounded-lg">Refresh</button></h3>
+      <div id="paymentsList" class="space-y-2 max-h-[400px] overflow-auto"></div>
+    </div>
+    <div class="card p-6">
+      <h3 class="font-bold jakarta mb-3">Notifications (from Admin - Cloud)</h3>
+      <div id="notifsList" class="space-y-2 max-h-[400px] overflow-auto"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const API = window.location.origin + '/api';
+let TOKEN = localStorage.getItem('rakti_student_token');
+let STUDENT = null;
+if(TOKEN) loadMe();
+
+function showTab(t){
+  document.getElementById('loginForm').classList.toggle('hidden', t!=='login');
+  document.getElementById('signupForm').classList.toggle('hidden', t!=='signup');
+  document.getElementById('loginTab').className = t==='login' ? 'tab-active px-6 py-2 rounded-lg font-semibold text-sm' : 'tab-inactive px-6 py-2 rounded-lg font-semibold text-sm';
+  document.getElementById('signupTab').className = t==='signup' ? 'tab-active px-6 py-2 rounded-lg font-semibold text-sm' : 'tab-inactive px-6 py-2 rounded-lg font-semibold text-sm';
+}
+
+async function studentLogin(){
+  const adm_number=document.getElementById('loginAdm').value.trim();
+  const password=document.getElementById('loginPass').value;
+  if(!adm_number||!password) return document.getElementById('loginMsg').textContent='Adm No and password required';
+  const res=await fetch(`${API}/auth/student-login`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({adm_number,password})});
+  const data=await res.json();
+  if(data.error){ document.getElementById('loginMsg').textContent=data.error; document.getElementById('loginMsg').className='text-xs text-red-600'; return; }
+  TOKEN=data.token; localStorage.setItem('rakti_student_token', TOKEN); STUDENT=data.student; showDashboard(data.student);
+}
+
+async function studentSignup(){
+  const adm_number=document.getElementById('signupAdm').value.trim();
+  const full_name=document.getElementById('signupName').value.trim();
+  const level=document.getElementById('signupLevel').value.trim();
+  const password=document.getElementById('signupPass').value;
+  if(!adm_number||!full_name||!level||!password) return document.getElementById('signupMsg').textContent='All fields required - must match admitted exactly';
+  const res=await fetch(`${API}/auth/student-signup`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({adm_number,full_name,level,password})});
+  const data=await res.json();
+  if(data.error){ document.getElementById('signupMsg').textContent=data.error; document.getElementById('signupMsg').className='text-xs text-red-600'; return; }
+  TOKEN=data.token; localStorage.setItem('rakti_student_token', TOKEN); STUDENT=data.student; showDashboard(data.student);
+  document.getElementById('signupMsg').textContent='✅ Created! Cloud account - works any device';
+  document.getElementById('signupMsg').className='text-xs text-green-600';
+}
+
+function showDashboard(student){
+  document.getElementById('authView').classList.add('hidden');
+  document.getElementById('dashView').classList.remove('hidden');
+  document.getElementById('studentName').textContent=student.full_name;
+  document.getElementById('studentAdm').textContent=`${student.adm_number} • ${student.level} • Cloud • Same design #0F2E4A`;
+  document.getElementById('totalFees').textContent=`KES ${student.total_fees}`;
+  document.getElementById('paidAmount').textContent=`KES ${student.paid_amount}`;
+  document.getElementById('balance').textContent=`KES ${student.balance}`;
+  loadMe();
+}
+
+async function loadMe(){
+  if(!TOKEN) return;
+  const res=await fetch(`${API}/student/me`, {headers:{'Authorization':'Bearer '+TOKEN}});
+  const data=await res.json();
+  if(data.error){ document.getElementById('authView').classList.remove('hidden'); document.getElementById('dashView').classList.add('hidden'); localStorage.removeItem('rakti_student_token'); return; }
+  const s=data.student; if(!s) return;
+  document.getElementById('studentName').textContent=s.full_name;
+  document.getElementById('studentAdm').textContent=`${s.adm_number} • ${s.level} • Cloud • Balance KES ${s.balance}`;
+  document.getElementById('totalFees').textContent=`KES ${s.total_fees}`;
+  document.getElementById('paidAmount').textContent=`KES ${s.paid_amount}`;
+  document.getElementById('balance').textContent=`KES ${s.balance}`;
+  document.getElementById('authView').classList.add('hidden');
+  document.getElementById('dashView').classList.remove('hidden');
+  document.getElementById('paymentsList').innerHTML=(data.payments||[]).map(p=>`
+    <div class="border border-gray-100 rounded-xl p-3 flex justify-between">
+      <div><b>KES ${p.amount}</b> • ${p.type}<br><span class="text-[11px] opacity-60">${p.method||''} • ${new Date(p.submitted_at).toLocaleDateString()}</span></div>
+      <span class="text-[11px] px-2.5 py-1 rounded-full h-fit font-medium ${p.status==='pending'?'bg-yellow-50 text-yellow-700 border border-yellow-100':p.status==='confirmed'?'bg-green-50 text-green-700 border border-green-100':'bg-red-50 text-red-700 border border-red-100'}">${p.status}</span>
+    </div>
+  `).join('') || '<p class="text-xs opacity-50">No payments yet - submit first</p>';
+  document.getElementById('notifsList').innerHTML=(data.notifications||[]).map(n=>`
+    <div class="border border-blue-50 bg-blue-50/50 rounded-xl p-3">
+      <p class="font-semibold text-sm text-primary">${n.title}</p>
+      <p class="text-xs opacity-70">${n.message}</p>
+      <p class="text-[10px] opacity-50 mt-1">${new Date(n.created_at).toLocaleString()}</p>
+    </div>
+  `).join('') || '<p class="text-xs opacity-50">No notifications - admin will notify when confirms payment</p>';
+}
+
+async function submitPayment(){
+  const amount=document.getElementById('payAmount').value;
+  const type=document.getElementById('payType').value;
+  const method=document.getElementById('payMethod').value;
+  if(!amount) return document.getElementById('payMsg').textContent='Amount required';
+  const res=await fetch(`${API}/student/submit-payment`, {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN}, body:JSON.stringify({amount,type,method})});
+  const data=await res.json();
+  if(data.error){ document.getElementById('payMsg').textContent=data.error; document.getElementById('payMsg').className='text-xs text-red-600'; return; }
+  document.getElementById('payMsg').textContent='✅ Submitted to admin (cloud) - admin will see notification on computer and Confirm / Not Yet Received - works any device';
+  document.getElementById('payMsg').className='text-xs text-green-600';
+  document.getElementById('payAmount').value=''; loadMe();
+}
+
+function logout(){ localStorage.removeItem('rakti_student_token'); location.reload(); }
+</script>
+</body>
+</html>
