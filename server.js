@@ -12,7 +12,12 @@ const app=express();
 app.use(cors({origin:'*',methods:['GET','POST','PUT','DELETE','OPTIONS'],allowedHeaders:['Content-Type','Authorization']}));
 app.use(express.json());
 app.use(express.static(__dirname));
-const supabaseAdmin=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_KEY);
+
+if(!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY || !process.env.JWT_SECRET){
+  console.error('WARNING: Missing env vars - SUPABASE_URL, SUPABASE_SERVICE_KEY, JWT_SECRET must be set in Render');
+}
+
+const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 function auth(req,res,next){const t=req.headers.authorization?.replace('Bearer ','');if(!t)return res.status(401).json({error:'No token'});try{req.user=jwt.verify(t,process.env.JWT_SECRET);next();}catch(e){return res.status(401).json({error:'Invalid token'})}}
 async function isAdmin(id){const {data}=await supabaseAdmin.from('admins').select('id').eq('id',id).single();return !!data;}
@@ -32,7 +37,7 @@ app.post('/api/auth/admin-signup',async(req,res)=>{
   const err=isStrongPassword(password); if(err) return res.status(400).json({error:err});
   const{count}=await supabaseAdmin.from('admins').select('*',{count:'exact',head:true});
   if(count>=2) return res.status(400).json({error:'Maximum 2 admins reached'});
-  const{data:au,[STRIPPED] supabaseAdmin.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{role:'admin',full_name}});
+  const{data:au,error:ae}=await supabaseAdmin.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{role:'admin',full_name}});
   if(ae) return res.status(400).json({error:ae.message});
   await supabaseAdmin.from('admins').insert({id:au.user.id,email,full_name});
   const token=jwt.sign({id:au.user.id,email,role:'admin'},process.env.JWT_SECRET,{expiresIn:'7d'});
@@ -61,7 +66,6 @@ app.post('/api/auth/forgot-password',async(req,res)=>{
   res.json({success:true,message:'Password updated'});
 });
 
-// Courses - admin adds before admitting, saved for next time
 app.get('/api/courses',auth,async(req,res)=>{
   const{data}=await supabaseAdmin.from('courses').select('*').order('name');
   res.json(data||[]);
@@ -137,12 +141,12 @@ app.post('/api/admin/add-payment',auth,async(req,res)=>{
   if(req.user.role!=='admin') return res.status(403).json({error:'Admin only'});
   const{adm_number,amount,type,method,confirmation_code,reference,semester,notes}=req.body;
   const adm=adm_number.trim().toUpperCase();
-  if(!/^[A-Za-z0-9]{10}$/.test(confirmation_code||'')) return res.status(400).json({error:'Confirmation code must be exactly 10 characters (alphanumeric) for Mpesa/Bank/Cheque'});
+  if(confirmation_code && !/^[A-Za-z0-9]{10}$/.test(confirmation_code)) return res.status(400).json({error:'Confirmation code must be exactly 10 alphanumeric'});
   const{data:st}=await supabaseAdmin.from('students').select('*').eq('adm_number',adm).single();
   if(!st) return res.status(404).json({error:'Student not found'});
   const np=st.paid_amount+parseInt(amount);
   await supabaseAdmin.from('students').update({paid_amount:np}).eq('adm_number',adm);
-  await supabaseAdmin.from('payments').insert({adm_number:adm,student_id:st.id,amount:parseInt(amount),type:type||'fees',status:'confirmed',method:method||'admin_direct',confirmation_code:confirmation_code,reference:reference||null,semester:semester||null,notes:notes||null});
+  await supabaseAdmin.from('payments').insert({adm_number:adm,student_id:st.id,amount:parseInt(amount),type:type||'fees',status:'confirmed',method:method||'admin_direct',confirmation_code:confirmation_code||null,reference:reference||null,semester:semester||null,notes:notes||null});
   const bal=st.total_fees-np;
   await supabaseAdmin.from('notifications').insert({for_adm_number:adm,for_user_id:st.id,title:'Fees Added',message:'Fees KES '+amount+' added balance KES '+bal});
   res.json({success:true,balance:bal});
@@ -161,7 +165,7 @@ app.post('/api/auth/student-signup',async(req,res)=>{
   if(ad.full_name.toLowerCase()!==name.toLowerCase()) return res.status(400).json({error:'Name mismatch Expected '+ad.full_name});
   if(ad.level.toLowerCase()!==lvl.toLowerCase()) return res.status(400).json({error:'Level mismatch Expected '+ad.level});
   const email=adm.toLowerCase()+'@rakti.local';
-  const{data:au,[STRIPPED] supabaseAdmin.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{adm_number:adm,full_name:ad.full_name,level:ad.level}});
+  const{data:au,error:ae}=await supabaseAdmin.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{adm_number:adm,full_name:ad.full_name,level:ad.level}});
   if(ae) return res.status(400).json({error:ae.message});
   const{data:upd}=await supabaseAdmin.from('students').update({id:au.user.id,email,is_registered:true}).eq('adm_number',adm).select().single();
   await supabaseAdmin.from('notifications').insert({for_adm_number:adm,for_user_id:au.user.id,title:'Registration Successful',message:'Welcome '+ad.full_name});
@@ -229,9 +233,9 @@ app.post('/api/admin/confirm-payment',auth,async(req,res)=>{
   }
 });
 
-app.get('/api',(req,res)=>res.json({message:'Rakti backend fixed confirm buttons + 10 code + courses + boarding/day + deferred'}));
+app.get('/api',(req,res)=>res.json({message:'Rakti backend running - fixed confirm buttons + 10 code + courses + boarding/day + deferred'}));
 app.get('/',(req,res)=>res.sendFile(path.join(__dirname,'admin.html')));
 app.get('/admin',(req,res)=>res.sendFile(path.join(__dirname,'admin.html')));
 app.get('/student',(req,res)=>res.sendFile(path.join(__dirname,'student.html')));
 const PORT=process.env.PORT||4000;
-app.listen(PORT,()=>console.log('Running '+PORT));
+app.listen(PORT,()=>console.log('Backend running on '+PORT));
