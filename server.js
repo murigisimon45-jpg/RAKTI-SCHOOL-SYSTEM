@@ -1,4 +1,3 @@
-
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -22,22 +21,55 @@ function auth(req,res,next){
   }catch(e){ return res.status(401).json({error:'Invalid token'})}
 }
 
+async function isAdmin(userId){
+  const { data } = await supabaseAdmin.from('admins').select('id').eq('id', userId).single();
+  return !!data;
+}
+
+// ADMIN SIGNUP - LIMITED TO 2 ADMINS (as per original app)
+app.post('/api/auth/admin-signup', async (req,res)=>{
+  const { email, password, full_name } = req.body;
+  if(!email || !password) return res.status(400).json({error:'email and password required'});
+  
+  // Check current admin count
+  const { count } = await supabaseAdmin.from('admins').select('*', { count: 'exact', head: true });
+  if(count >= 2){
+    return res.status(400).json({error:'Maximum 2 admins reached. Cannot add more admins (as per original app limit).'});
+  }
+  
+  const { data: authUser, error: authErr } = await supabaseAdmin.auth.admin.createUser({
+    email, password, email_confirm: true,
+    user_metadata: { role:'admin', full_name }
+  });
+  if(authErr) return res.status(400).json({error: authErr.message});
+  await supabaseAdmin.from('admins').insert({ id: authUser.user.id, email, full_name });
+  const token = jwt.sign({ id: authUser.user.id, email, role:'admin' }, process.env.JWT_SECRET, { expiresIn:'7d' });
+  res.json({ token, user: authUser.user, message: `Admin ${count+1}/2 created` });
+});
+
 // ADMIN LOGIN
 app.post('/api/auth/admin-login', async (req,res)=>{
   const { email, password } = req.body;
   const { data, error } = await supabaseAdmin.auth.signInWithPassword({ email, password });
   if(error) return res.status(400).json({error: error.message});
-  if(email !== process.env.ADMIN_EMAIL) return res.status(403).json({error:'Not admin'});
-  const token = jwt.sign({ id: data.user.id, email, role:'admin', adm_number:null }, process.env.JWT_SECRET, { expiresIn:'7d' });
+  const { data: admin } = await supabaseAdmin.from('admins').select('*').eq('id', data.user.id).single();
+  if(!admin) return res.status(403).json({error:'Not an admin.'});
+  const token = jwt.sign({ id: data.user.id, email, role:'admin' }, process.env.JWT_SECRET, { expiresIn:'7d' });
   res.json({ token, user: data.user });
 });
 
-// ADMIN admits student - ONLY adm_number, name, level + fees
+// List admins (to see how many slots left)
+app.get('/api/admin/list-admins', auth, async (req,res)=>{
+  if(req.user.role !== 'admin') return res.status(403).json({error:'Admin only'});
+  const { data, count } = await supabaseAdmin.from('admins').select('*', { count: 'exact' }).order('created_at');
+  res.json({ admins: data, total: count, max: 2, slots_left: 2 - count });
+});
+
 app.post('/api/admin/admit', auth, async (req,res)=>{
   if(req.user.role !== 'admin') return res.status(403).json({error:'Admin only'});
+  if(!(await isAdmin(req.user.id))) return res.status(403).json({error:'Not admin'});
   const { adm_number, full_name, level, total_fees } = req.body;
   if(!adm_number || !full_name || !level) return res.status(400).json({error:'adm_number, full_name, level required'});
-
   const { data, error } = await supabaseAdmin.from('students').insert({
     adm_number: adm_number.trim().toUpperCase(),
     full_name: full_name.trim(),
@@ -47,83 +79,16 @@ app.post('/api/admin/admit', auth, async (req,res)=>{
     paid_amount: 0,
     is_registered: false
   }).select().single();
-
-  if(error) return res.status(400).json({error: error.message + ' (maybe adm number exists)'});
+  if(error) return res.status(400).json({error: error.message});
   res.json(data);
 });
 
-// STUDENT SIGNUP - only if admitted, details must match
-app.post('/api/auth/student-signup', async (req,res)=>{
-  const { adm_number, full_name, level, password } = req.body;
-  if(!adm_number || !full_name || !level || !password) return res.status(400).json({error:'All fields required'});
-
-  const adm = adm_number.trim().toUpperCase();
-  const name = full_name.trim();
-  const lvl = level.trim();
-
-  // Check if admitted
-  const { data: admitted, error: findErr } = await supabaseAdmin.from('students').select('*').eq('adm_number', adm).single();
-  if(findErr || !admitted) return res.status(404).json({error:'Admission not found. Contact admin.'});
-  if(admitted.is_registered) return res.status(400).json({error:'Already registered. Please login.'});
-
-  // Must match name and level (case-insensitive for name, exact for level)
-  if(admitted.full_name.toLowerCase() !== name.toLowerCase()){
-    return res.status(400).json({error:`Name does not match admin record. Expected: ${admitted.full_name}`});
-  }
-  if(admitted.level.toLowerCase() !== lvl.toLowerCase()){
-    return res.status(400).json({error:`Level does not match. Expected: ${admitted.level}`});
-  }
-
-  // Create auth user - email is synthetic: adm_number@rakti.local
-  const email = `${adm.toLowerCase()}@rakti.local`;
-  const { data: authUser, error: authErr } = await supabaseAdmin.auth.admin.createUser({
-    email, password, email_confirm: true,
-    user_metadata: { adm_number: adm, full_name: admitted.full_name, level: admitted.level }
-  });
-  if(authErr) return res.status(400).json({error: authErr.message});
-
-  // Link student record to auth user
-  const { data: updated, error: updErr } = await supabaseAdmin.from('students').update({
-    id: authUser.user.id,
-    email,
-    is_registered: true
-  }).eq('adm_number', adm).select().single();
-
-  if(updErr) return res.status(400).json({error: updErr.message});
-
-  await supabaseAdmin.from('notifications').insert({
-    for_adm_number: adm,
-    for_user_id: authUser.user.id,
-    title: 'Registration Successful',
-    message: `Welcome ${admitted.full_name}! Your account linked to ${adm}. Balance is KES ${admitted.balance || admitted.total_fees}.`
-  });
-
-  const token = jwt.sign({ id: authUser.user.id, adm_number: adm, role:'student' }, process.env.JWT_SECRET, { expiresIn:'7d' });
-  res.json({ token, user: authUser.user, student: updated });
-});
-
-// STUDENT LOGIN - with adm_number + password (or email)
-app.post('/api/auth/student-login', async (req,res)=>{
-  const { adm_number, password } = req.body;
-  if(!adm_number || !password) return res.status(400).json({error:'adm_number and password required'});
-  const adm = adm_number.trim().toUpperCase();
-  const email = `${adm.toLowerCase()}@rakti.local`;
-  const { data, error } = await supabaseAdmin.auth.signInWithPassword({ email, password });
-  if(error) return res.status(400).json({error:'Invalid adm number or password'});
-
-  const { data: student } = await supabaseAdmin.from('students').select('*').eq('adm_number', adm).single();
-  const token = jwt.sign({ id: data.user.id, adm_number: adm, role:'student' }, process.env.JWT_SECRET, { expiresIn:'7d' });
-  res.json({ token, user: data.user, student });
-});
-
-// ADMIN: get all students
 app.get('/api/admin/students', auth, async (req,res)=>{
   if(req.user.role !== 'admin') return res.status(403).json({error:'Admin only'});
   const { data } = await supabaseAdmin.from('students').select('*').order('created_at',{ascending:false});
   res.json(data);
 });
 
-// ADMIN: add fees directly
 app.post('/api/admin/add-payment', auth, async (req,res)=>{
   if(req.user.role !== 'admin') return res.status(403).json({error:'Admin only'});
   const { adm_number, amount, type } = req.body;
@@ -144,22 +109,61 @@ app.post('/api/admin/add-payment', auth, async (req,res)=>{
   res.json({ success:true, balance });
 });
 
-// STUDENT: submit payment for confirmation
+app.post('/api/auth/student-signup', async (req,res)=>{
+  const { adm_number, full_name, level, password } = req.body;
+  if(!adm_number || !full_name || !level || !password) return res.status(400).json({error:'All fields required'});
+  const adm = adm_number.trim().toUpperCase();
+  const name = full_name.trim();
+  const lvl = level.trim();
+  const { data: admitted } = await supabaseAdmin.from('students').select('*').eq('adm_number', adm).single();
+  if(!admitted) return res.status(404).json({error:'Admission not found. Contact admin.'});
+  if(admitted.is_registered) return res.status(400).json({error:'Already registered. Please login.'});
+  if(admitted.full_name.toLowerCase() !== name.toLowerCase()){
+    return res.status(400).json({error:`Name does not match admin record. Expected: ${admitted.full_name}`});
+  }
+  if(admitted.level.toLowerCase() !== lvl.toLowerCase()){
+    return res.status(400).json({error:`Level does not match. Expected: ${admitted.level}`});
+  }
+  const email = `${adm.toLowerCase()}@rakti.local`;
+  const { data: authUser, error: authErr } = await supabaseAdmin.auth.admin.createUser({
+    email, password, email_confirm: true,
+    user_metadata: { adm_number: adm, full_name: admitted.full_name, level: admitted.level }
+  });
+  if(authErr) return res.status(400).json({error: authErr.message});
+  const { data: updated } = await supabaseAdmin.from('students').update({
+    id: authUser.user.id, email, is_registered: true
+  }).eq('adm_number', adm).select().single();
+  await supabaseAdmin.from('notifications').insert({
+    for_adm_number: adm, for_user_id: authUser.user.id,
+    title: 'Registration Successful',
+    message: `Welcome ${admitted.full_name}! Account linked to ${adm}. Balance is KES ${updated.balance}.`
+  });
+  const token = jwt.sign({ id: authUser.user.id, adm_number: adm, role:'student' }, process.env.JWT_SECRET, { expiresIn:'7d' });
+  res.json({ token, user: authUser.user, student: updated });
+});
+
+app.post('/api/auth/student-login', async (req,res)=>{
+  const { adm_number, password } = req.body;
+  if(!adm_number || !password) return res.status(400).json({error:'adm_number and password required'});
+  const adm = adm_number.trim().toUpperCase();
+  const email = `${adm.toLowerCase()}@rakti.local`;
+  const { data, error } = await supabaseAdmin.auth.signInWithPassword({ email, password });
+  if(error) return res.status(400).json({error:'Invalid adm number or password'});
+  const { data: student } = await supabaseAdmin.from('students').select('*').eq('adm_number', adm).single();
+  const token = jwt.sign({ id: data.user.id, adm_number: adm, role:'student' }, process.env.JWT_SECRET, { expiresIn:'7d' });
+  res.json({ token, user: data.user, student });
+});
+
 app.post('/api/student/submit-payment', auth, async (req,res)=>{
   if(req.user.role !== 'student') return res.status(403).json({error:'Student only'});
   const { amount, type, method } = req.body;
   const { data, error } = await supabaseAdmin.from('payments').insert({
-    adm_number: req.user.adm_number,
-    student_id: req.user.id,
-    amount: parseInt(amount),
-    type, method,
-    status:'pending'
+    adm_number: req.user.adm_number, student_id: req.user.id, amount: parseInt(amount), type, method, status:'pending'
   }).select().single();
   if(error) return res.status(400).json({error:error.message});
   res.json(data);
 });
 
-// STUDENT: get own data (read only)
 app.get('/api/student/me', auth, async (req,res)=>{
   if(req.user.role !== 'student') return res.status(403).json({error:'Student only'});
   const { data: student } = await supabaseAdmin.from('students').select('*').eq('adm_number', req.user.adm_number).single();
@@ -168,14 +172,12 @@ app.get('/api/student/me', auth, async (req,res)=>{
   res.json({ student, payments, notifications: notifs });
 });
 
-// ADMIN: pending payments
 app.get('/api/admin/pending-payments', auth, async (req,res)=>{
   if(req.user.role !== 'admin') return res.status(403).json({error:'Admin only'});
   const { data } = await supabaseAdmin.from('payments').select('*, students(full_name,adm_number,level)').eq('status','pending').order('submitted_at',{ascending:false});
   res.json(data);
 });
 
-// ADMIN: confirm/reject
 app.post('/api/admin/confirm-payment', auth, async (req,res)=>{
   if(req.user.role !== 'admin') return res.status(403).json({error:'Admin only'});
   const { payment_id, action } = req.body;
@@ -189,20 +191,20 @@ app.post('/api/admin/confirm-payment', auth, async (req,res)=>{
     const balance = student.total_fees - newPaid;
     await supabaseAdmin.from('notifications').insert({
       for_adm_number: payment.adm_number, for_user_id: payment.student_id,
-      title: 'Payment Confirmed',
-      message: `Your ${payment.type} payment of KES ${payment.amount} confirmed. Balance is KES ${balance}.`
+      title: 'Payment Confirmed', message: `Your ${payment.type} payment of KES ${payment.amount} confirmed. Balance is KES ${balance}.`
     });
     return res.json({ success:true, balance });
   } else {
     await supabaseAdmin.from('payments').update({ status:'rejected' }).eq('id', payment_id);
     await supabaseAdmin.from('notifications').insert({
       for_adm_number: payment.adm_number, for_user_id: payment.student_id,
-      title: 'Payment Not Received',
-      message: `Your ${payment.type} payment of KES ${payment.amount} marked as not received.`
+      title: 'Payment Not Received', message: `Your ${payment.type} payment of KES ${payment.amount} marked as not received.`
     });
     return res.json({ success:true });
   }
 });
 
+app.get('/', (req,res)=> res.json({ message:'Rakti backend running - max 2 admins', limit: '2 admins as per original app' }));
+
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, ()=> console.log(`Rakti backend running on http://localhost:${PORT}`));
+app.listen(PORT, ()=> console.log(`Rakti backend running on port ${PORT} - MAX 2 ADMINS`));
